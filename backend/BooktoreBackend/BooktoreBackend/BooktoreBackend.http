@@ -1,0 +1,6 @@
+@BooktoreBackend_HostAddress = http://localhost:5226
+
+GET {{BooktoreBackend_HostAddress}}/api/books
+Accept: application/json
+
+###
