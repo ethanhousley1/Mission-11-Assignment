@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import BookList from './components/BookList'
 import CartSummary from './components/CartSummary'
@@ -41,6 +41,8 @@ function App() {
   const [isCartLoading, setIsCartLoading] = useState(false)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [isRemovingFromCart, setIsRemovingFromCart] = useState(false)
+  const [cartAlert, setCartAlert] = useState<string | null>(null) // cart alert state
+  const cartAlertTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadCart = async () => {
     try {
@@ -88,6 +90,10 @@ function App() {
 
       const data = (await response.json()) as CartResponse
       setCart(data)
+      const book = books.find((b) => b.bookId === bookId)
+      if (cartAlertTimer.current) clearTimeout(cartAlertTimer.current)
+      setCartAlert(`"${book?.title ?? 'Book'}" added to cart!`) // cart alert message!
+      cartAlertTimer.current = setTimeout(() => setCartAlert(null), 3000)
       setView('cart')
     } catch (err) {
       setCartError(err instanceof Error ? err.message : 'Unknown error')
@@ -151,7 +157,14 @@ function App() {
   }, [pageNumber, pageSize, sortOrder])
 
   return (
-    <main className="container py-4">
+    <main className="container-fluid py-4">
+      {/* cart alert starts here */}
+      {cartAlert && (
+        <div className="alert alert-success alert-dismissible fade show" role="alert">
+          {cartAlert}
+          <button type="button" className="btn-close" onClick={() => setCartAlert(null)} aria-label="Close"></button>
+        </div>
+      )}
       <div className="row g-4">
         <div className="col-12 col-lg-4">
           {isCartLoading && <div className="alert alert-info">Loading cart...</div>}
@@ -182,7 +195,7 @@ function App() {
                 <p className="text-muted mb-4">Books from backend API</p>
 
                 <div className="row g-3 align-items-end mb-3">
-                  <div className="col-12 col-md-4">
+                  <div className="col-12 col-md-4 col-lg-12 col-xl-4">
                     <label htmlFor="page-size" className="form-label mb-1">
                       Results per page
                     </label>
@@ -201,7 +214,7 @@ function App() {
                       <option value={20}>20</option>
                     </select>
                   </div>
-                  <div className="col-12 col-md-4">
+                  <div className="col-12 col-md-4 col-lg-12 col-xl-4">
                     <label htmlFor="sort-order" className="form-label mb-1">
                       Sort by title
                     </label>
@@ -219,24 +232,30 @@ function App() {
                       <option value="desc">Z to A</option>
                     </select>
                   </div>
-                  <div className="col-12 col-md-4">
-                    <div className="d-flex align-items-center gap-2">
-                      <button
-                        className="btn btn-outline-secondary"
-                        onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-                        disabled={pageNumber === 1 || isLoading}
-                      >
-                        Previous
-                      </button>
-                      <span className="badge text-bg-light border">Page {pageNumber}</span>
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => setPageNumber((p) => p + 1)}
-                        disabled={isLoading || books.length < pageSize}
-                      >
-                        Next
-                      </button>
-                    </div>
+                  <div className="col-12 col-md-4 col-lg-12 col-xl-4"> {/* Pagination controls start here */}
+                    <nav aria-label="Page navigation"> 
+                      <ul className="pagination mb-0">
+                        <li className={`page-item${pageNumber === 1 || isLoading ? ' disabled' : ''}`}>
+                          <a className="page-link" href="#" onClick={(e) => { e.preventDefault(); if (pageNumber > 1 && !isLoading) setPageNumber((p) => p - 1) }}>
+                            Previous
+                          </a>
+                        </li>
+                        {Array.from({ length: Math.min(pageNumber + (books.length >= pageSize ? 1 : 0), Math.max(pageNumber, 3)) }, (_, i) => i + 1)
+                          .filter((p) => p >= Math.max(1, pageNumber - 2))
+                          .map((p) => (
+                            <li key={p} className={`page-item${p === pageNumber ? ' active' : ''}${isLoading ? ' disabled' : ''}`}>
+                              <a className="page-link" href="#" onClick={(e) => { e.preventDefault(); if (!isLoading) setPageNumber(p) }}>
+                                {p}
+                              </a>
+                            </li>
+                          ))}
+                        <li className={`page-item${isLoading || books.length < pageSize ? ' disabled' : ''}`}>
+                          <a className="page-link" href="#" onClick={(e) => { e.preventDefault(); if (!isLoading && books.length >= pageSize) setPageNumber((p) => p + 1) }}>
+                            Next
+                          </a>
+                        </li>
+                      </ul>
+                    </nav>
                   </div>
                 </div>
 
