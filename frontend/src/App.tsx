@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
-import BookList from './components/BookList'
+import CartSummary from './components/CartSummary'
 
 type Book = {
   bookId: number
@@ -14,111 +15,170 @@ type Book = {
   price: number
 }
 
+type CartItem = {
+  bookId: number
+  title: string
+  quantity: number
+  price: number
+  subtotal: number
+}
+
+type CartResponse = {
+  items: CartItem[]
+  total: number
+}
+
+export type AppContext = {
+  books: Book[]
+  cart: CartResponse
+  cartAlert: string | null
+  setCartAlert: (msg: string | null) => void
+  addToCart: (bookId: number, books: Book[]) => Promise<void>
+  removeFromCart: (bookId: number, removeAll?: boolean) => Promise<void>
+  isAddingToCart: boolean
+  isRemovingFromCart: boolean
+  cartError: string | null
+}
+
 function App() {
-  const [books, setBooks] = useState<Book[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [pageNumber, setPageNumber] = useState(1)
-  const [pageSize, setPageSize] = useState(5)
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  const [isLoading, setIsLoading] = useState(false)
+  const [cart, setCart] = useState<CartResponse>({ items: [], total: 0 })
+  const [cartError, setCartError] = useState<string | null>(null)
+  const [isCartLoading, setIsCartLoading] = useState(false)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [isRemovingFromCart, setIsRemovingFromCart] = useState(false)
+  const [cartAlert, setCartAlert] = useState<string | null>(null)
+  const cartAlertTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isCartView = location.pathname === '/cart'
+
+  const loadCart = async () => {
+    try {
+      setIsCartLoading(true)
+      setCartError(null)
+
+      const response = await fetch('/api/cart')
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`)
+      }
+
+      const data = (await response.json()) as CartResponse
+      setCart(data)
+    } catch (err) {
+      setCart({ items: [], total: 0 })
+      setCartError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setIsCartLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const loadBooks = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        const response = await fetch(`/api/books?pageNumber=${pageNumber}&pageSize=${pageSize}&sortOrder=${sortOrder}`)
+    loadCart()
+  }, [])
 
-        if (!response.ok) {
-          throw new Error(`Request failed: ${response.status}`)
-        }
+  const addToCart = async (bookId: number, books: Book[]) => {
+    try {
+      setIsAddingToCart(true)
+      setCartError(null)
 
-        const data = (await response.json()) as Book[]
-        setBooks(data)
-      } catch (err) {
-        setBooks([])
-        setError(err instanceof Error ? err.message : 'Unknown error')
-      } finally {
-        setIsLoading(false)
+      const response = await fetch('/api/cart/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookId,
+          quantity: 1,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`)
       }
-    }
 
-    loadBooks()
-  }, [pageNumber, pageSize, sortOrder])
+      const data = (await response.json()) as CartResponse
+      setCart(data)
+      const book = books.find((b) => b.bookId === bookId)
+      if (cartAlertTimer.current) clearTimeout(cartAlertTimer.current)
+      setCartAlert(`"${book?.title ?? 'Book'}" added to cart!`)
+      cartAlertTimer.current = setTimeout(() => setCartAlert(null), 3000)
+      navigate('/cart')
+    } catch (err) {
+      setCartError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setIsAddingToCart(false)
+    }
+  }
+
+  const removeFromCart = async (bookId: number, removeAll = false) => {
+    try {
+      setIsRemovingFromCart(true)
+      setCartError(null)
+
+      const response = await fetch('/api/cart/remove', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookId,
+          quantity: 1,
+          removeAll,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`)
+      }
+
+      const data = (await response.json()) as CartResponse
+      setCart(data)
+    } catch (err) {
+      setCartError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setIsRemovingFromCart(false)
+    }
+  }
+
+  const context: AppContext = {
+    books: [],
+    cart,
+    cartAlert,
+    setCartAlert,
+    addToCart,
+    removeFromCart,
+    isAddingToCart,
+    isRemovingFromCart,
+    cartError,
+  }
 
   return (
-    <main className="container py-4">
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <h1 className="h3 mb-1">Bookstore Frontend</h1>
-          <p className="text-muted mb-4">Books from backend API</p>
-
-          <div className="d-flex flex-wrap gap-3 align-items-end mb-3">
-            <div>
-              <label htmlFor="page-size" className="form-label mb-1">
-                Results per page
-              </label>
-              <select
-                id="page-size"
-                className="form-select"
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value))
-                  setPageNumber(1)
-                }}
-                disabled={isLoading}
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="sort-order" className="form-label mb-1">
-                Sort by title
-              </label>
-              <select
-                id="sort-order"
-                className="form-select"
-                value={sortOrder}
-                onChange={(e) => {
-                  setSortOrder(e.target.value as 'asc' | 'desc')
-                  setPageNumber(1)
-                }}
-                disabled={isLoading}
-              >
-                <option value="asc">A to Z</option>
-                <option value="desc">Z to A</option>
-              </select>
-            </div>
-
-            <div className="d-flex align-items-center gap-2">
-              <button
-                className="btn btn-outline-secondary"
-                onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-                disabled={pageNumber === 1 || isLoading}
-              >
-                Previous
-              </button>
-              <span className="badge text-bg-light border">Page {pageNumber}</span>
-              <button
-                className="btn btn-primary"
-                onClick={() => setPageNumber((p) => p + 1)}
-                disabled={isLoading || books.length < pageSize}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-
-          {error && <div className="alert alert-danger">Error: {error}</div>}
-          {isLoading && <div className="alert alert-info">Loading...</div>}
-
-          {!isLoading && books.length > 0 && <BookList books={books} />}
-
-          {!isLoading && books.length === 0 && !error && (
-            <div className="alert alert-secondary mb-0">No books found for this page.</div>
+    <main className="container-fluid py-4">
+      <nav className="mb-3 d-flex gap-3">
+        <Link to="/books" className="text-decoration-none fw-semibold">Books</Link>
+        <Link to="/cart" className="text-decoration-none fw-semibold">Cart</Link>
+        <Link to="/adminbooks" className="text-decoration-none fw-semibold text-danger">Admin</Link>
+      </nav>
+      <div className="row g-4">
+        <div className="col-12 col-lg-4">
+          {isCartLoading && <div className="alert alert-info">Loading cart...</div>}
+          {cartError && <div className="alert alert-danger">Cart error: {cartError}</div>}
+          {!isCartLoading && !cartError && (
+            <CartSummary
+              items={cart.items}
+              total={cart.total}
+              showActions={isCartView}
+              onContinueShopping={() => navigate('/books')}
+              onRemoveOne={(bookId) => removeFromCart(bookId, false)}
+              onRemoveAll={(bookId) => removeFromCart(bookId, true)}
+              isUpdatingCart={isAddingToCart || isRemovingFromCart}
+            />
           )}
+        </div>
+
+        <div className="col-12 col-lg-8">
+          <Outlet context={context} />
         </div>
       </div>
     </main>
