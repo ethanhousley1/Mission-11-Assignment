@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { api } from '../api'
 
 type Book = {
   bookId: number
@@ -55,7 +56,7 @@ function AdminBooksPage() {
     setIsLoading(true)
     setPageError(null)
     try {
-      const res = await fetch(`/api/books?pageNumber=${page}&pageSize=${size}&sortOrder=asc`)
+      const res = await api(`/api/books?pageNumber=${page}&pageSize=${size}&sortOrder=asc`)
       if (!res.ok) throw new Error(`Failed to load books (${res.status})`)
       const data = await res.json()
       setBooks(data.books)
@@ -117,7 +118,7 @@ function AdminBooksPage() {
     setFormError(null)
     try {
       if (modalMode === 'add') {
-        const res = await fetch('/api/books', {
+        const res = await api('/api/books', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...form, bookId: 0 }),
@@ -125,7 +126,7 @@ function AdminBooksPage() {
         if (!res.ok) throw new Error(`Could not add book (${res.status})`)
         flash(`"${form.title}" added.`)
       } else if (modalMode === 'edit' && selectedBook) {
-        const res = await fetch(`/api/books/${selectedBook.bookId}`, {
+        const res = await api(`/api/books/${selectedBook.bookId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...form, bookId: selectedBook.bookId }),
@@ -146,7 +147,7 @@ function AdminBooksPage() {
     if (!deleteTarget) return
     setIsDeleting(true)
     try {
-      const res = await fetch(`/api/books/${deleteTarget.bookId}`, { method: 'DELETE' })
+      const res = await api(`/api/books/${deleteTarget.bookId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(`Could not delete book (${res.status})`)
       flash(`"${deleteTarget.title}" deleted.`)
       setDeleteTarget(null)

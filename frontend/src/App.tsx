@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
+import { api } from './api'
 import CartSummary from './components/CartSummary'
 
 type Book = {
@@ -58,7 +59,7 @@ function App() {
       setIsCartLoading(true)
       setCartError(null)
 
-      const response = await fetch('/api/cart')
+      const response = await api('/api/cart')
       if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`)
       }
@@ -82,7 +83,7 @@ function App() {
       setIsAddingToCart(true)
       setCartError(null)
 
-      const response = await fetch('/api/cart/add', {
+      const response = await api('/api/cart/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,7 +117,7 @@ function App() {
       setIsRemovingFromCart(true)
       setCartError(null)
 
-      const response = await fetch('/api/cart/remove', {
+      const response = await api('/api/cart/remove', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

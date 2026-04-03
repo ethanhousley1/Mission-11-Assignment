@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { api } from '../api'
 import BookList from '../components/BookList'
 import type { AppContext } from '../App'
 
@@ -19,7 +20,7 @@ function BooksPage() {
       try {
         setIsLoading(true)
         setError(null)
-        const response = await fetch(`/api/books?pageNumber=${pageNumber}&pageSize=${pageSize}&sortOrder=${sortOrder}`)
+        const response = await api(`/api/books?pageNumber=${pageNumber}&pageSize=${pageSize}&sortOrder=${sortOrder}`)
 
         if (!response.ok) {
           throw new Error(`Request failed: ${response.status}`)
