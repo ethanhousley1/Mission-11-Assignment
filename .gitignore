@@ -12,11 +12,16 @@ lerna-debug.log*
 # ---- .NET / Backend ----
 bin/
 obj/
+
 .vs/
 *.user
 *.rsuser
 *.suo
 TestResults/
+
+# ---- ASP.NET secrets (never commit real credentials) ----
+appsettings.Production.json
+secrets.json
 
 # ---- IDE / OS ----
 .idea/
