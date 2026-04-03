@@ -128,14 +128,14 @@ public class CartController(BookstoreContext db) : ControllerBase
         public int BookId { get; set; }
         public string Title { get; set; } = string.Empty;
         public int Quantity { get; set; }
-        public double Price { get; set; }
-        public double Subtotal { get; set; }
+        public decimal Price { get; set; }
+        public decimal Subtotal { get; set; }
     }
 
     private sealed class CartResponseDto
     {
         public List<CartItemDto> Items { get; set; } = [];
-        public double Total { get; set; }
+        public decimal Total { get; set; }
     }
 
     public sealed class AddToCartRequest
