@@ -12,6 +12,7 @@ lerna-debug.log*
 # ---- .NET / Backend ----
 bin/
 obj/
+publish/
 
 .vs/
 *.user
